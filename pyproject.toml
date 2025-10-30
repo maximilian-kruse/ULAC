@@ -24,6 +24,7 @@ dependencies = [
     "libigl>=2.6.1",
     "numba>=0.62.1",
     "numpy>=2.3.4",
+    "python-igraph>=1.0.0",
     "pyvista[all]>=0.46.4",
     "trimesh>=4.9.0",
 ]
