@@ -2154,15 +2154,15 @@ wheels = [
 
 [[package]]
 name = "trame-server"
-version = "3.8.0"
+version = "3.6.3"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "more-itertools", marker = "sys_platform == 'linux'" },
     { name = "wslink", marker = "sys_platform == 'linux'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/c0/be/305b5bcdfb9f7c1468d3b789fabdc65bc3b6e21739fb1b84bdabc7ce1ec2/trame_server-3.8.0.tar.gz", hash = "sha256:2573ecc1f74994521a60b302a4bd1bff9d48fefbd2fd95ed39245f53c4555242", size = 39408, upload-time = "2025-10-22T17:27:07.767Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/5e/63/50b22cc72caaf1a18c15215ce42a67eae3a991113eeddb961d2227c1e5c9/trame_server-3.6.3.tar.gz", hash = "sha256:88e93b3352bd5dfe83c82ab2e2b77f8173753d065076134b69c26ba9f48f8a9b", size = 38985, upload-time = "2025-10-06T14:26:33.244Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/f4/1f/4bc17d069b6d3c25cdee35fceff466c627bbeb58f928dd1b7fd04fc52da8/trame_server-3.8.0-py3-none-any.whl", hash = "sha256:fe49214f29edc27b9957275c60c6185c6dd4037fe96eedb795fe5a04e53f07b2", size = 44141, upload-time = "2025-10-22T17:27:06.417Z" },
+    { url = "https://files.pythonhosted.org/packages/3b/8e/1713aa775e2a35d981bb545e17e2944e453f4fb41f8405905421be38975a/trame_server-3.6.3-py3-none-any.whl", hash = "sha256:8708953d5533e9deb447c6b560c2cd2c2f692c27c9afb251e842f2e5d37e8efc", size = 43698, upload-time = "2025-10-06T14:26:32.09Z" },
 ]
 
 [[package]]
@@ -2242,6 +2242,10 @@ examples = [
     { name = "matplotlib", marker = "sys_platform == 'linux'" },
     { name = "pandas", marker = "sys_platform == 'linux'" },
     { name = "seaborn", marker = "sys_platform == 'linux'" },
+    { name = "trame", marker = "sys_platform == 'linux'" },
+    { name = "trame-server", marker = "sys_platform == 'linux'" },
+    { name = "trame-vtk", marker = "sys_platform == 'linux'" },
+    { name = "trame-vuetify", marker = "sys_platform == 'linux'" },
 ]
 
 [package.metadata]
@@ -2251,7 +2255,7 @@ requires-dist = [
     { name = "numba", specifier = ">=0.62.1" },
     { name = "numpy", specifier = ">=2.3.4" },
     { name = "python-igraph", specifier = ">=1.0.0" },
-    { name = "pyvista", extras = ["all"], specifier = ">=0.46.4" },
+    { name = "pyvista", extras = ["all"], specifier = "==0.46.4" },
     { name = "trimesh", specifier = ">=4.9.0" },
 ]
 
@@ -2265,6 +2269,10 @@ examples = [
     { name = "matplotlib", specifier = ">=3.10.7" },
     { name = "pandas", specifier = ">=2.3.3" },
     { name = "seaborn", specifier = ">=0.13.2" },
+    { name = "trame", specifier = ">=3.12.0" },
+    { name = "trame-server", specifier = "<3.7" },
+    { name = "trame-vtk", specifier = ">=2.10.0" },
+    { name = "trame-vuetify", specifier = ">=3.1.0" },
 ]
 
 [[package]]

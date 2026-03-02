@@ -7,15 +7,13 @@ import igl
 import numpy as np
 import pyvista as pv
 
-from . import configuration as config
-from . import construction_base as base
-from . import workflow
+from . import configuration, internal
 
 # ==================================================================================================
 type MarkerDict = dict[str, "MarkerDict" | int]
 type PathDict = dict[str, "PathDict" | np.ndarray[tuple[int], np.dtype[np.float64]]]
-type ParameterizedPathDict = dict[str, "ParameterizedPathDict" | base.ParameterizedPath]
-type UACPathDict = dict[str, "UACPathDict" | base.UACPath]
+type ParameterizedPathDict = dict[str, "ParameterizedPathDict" | internal.ParameterizedPath]
+type UACPathDict = dict[str, "UACPathDict" | internal.UACPath]
 type SubmeshBoundaryDict = dict[
     str, "SubmeshBoundaryDict" | np.ndarray[tuple[int], np.dtype[np.int64]]
 ]
@@ -23,14 +21,14 @@ type SubmeshDict = dict[str, "SubmeshDict" | pv.PolyData]
 type UACSubmeshDict = dict[str, "UACSubmeshDict" | pv.PolyData]
 
 type PathConfigDict = dict[
-    str, "PathConfigDict" | config.BoundaryPathConfig | config.ConnectionPathConfig
+    str, "PathConfigDict" | configuration.BoundaryPathConfig | configuration.ConnectionPathConfig
 ]
-type MarkerConfigDict = dict[str, "MarkerConfigDict" | config.MarkerConfig]
+type MarkerConfigDict = dict[str, "MarkerConfigDict" | configuration.MarkerConfig]
 type ParameterizationConfigDict = dict[
-    str, "ParameterizationConfigDict" | config.ParameterizationConfig
+    str, "ParameterizationConfigDict" | configuration.ParameterizationConfig
 ]
-type UACConfigDict = dict[str, "UACConfigDict" | config.UACConfig]
-type SubmeshConfigDict = dict[str, "SubmeshConfigDict" | config.SubmeshConfig]
+type UACConfigDict = dict[str, "UACConfigDict" | configuration.UACConfig]
+type SubmeshConfigDict = dict[str, "SubmeshConfigDict" | configuration.SubmeshConfig]
 type AnyDict = (
     MarkerDict
     | PathDict
@@ -99,7 +97,7 @@ class ULACConstructorSettings:
     parameterization_config: ParameterizationConfigDict
     uac_config: UACConfigDict
     submesh_config: SubmeshConfigDict
-    segmentation_workflow: Iterable[workflow.Step]
+    segmentation_workflow: Iterable[configuration.Step]
 
 
 @dataclass
@@ -210,12 +208,12 @@ class ULACConstructor:
                 path_config = get_dict_entry(key_sequence, self._path_config)
             except KeyError as e:
                 raise KeyError(f"Key sequence {key_sequence} not found in path_config") from e
-            if not isinstance(path_config, config.BoundaryPathConfig):
+            if not isinstance(path_config, configuration.BoundaryPathConfig):
                 continue
             print(f"Extracting Feature: {key_sequence}")
             tag_value = self._feature_tags[path_config.feature_tag]
             is_mesh_boundary = path_config.coincides_with_mesh_boundary
-            boundary_path = base.get_feature_boundary(self._mesh, tag_value, is_mesh_boundary)
+            boundary_path = internal.get_feature_boundary(self._mesh, tag_value, is_mesh_boundary)
             set_dict_entry(key_sequence, self._raw_path_data, boundary_path)
 
     # ----------------------------------------------------------------------------------------------
@@ -244,7 +242,7 @@ class ULACConstructor:
             # Get marker from relative position in parameterized path
             elif marker_config.position_type == "relative":
                 containing_path = get_dict_entry(marker_config.path, self._parameterized_path_data)
-                if not isinstance(containing_path, base.ParameterizedPath):
+                if not isinstance(containing_path, internal.ParameterizedPath):
                     raise TypeError(
                         f"Parameterized path {marker_config.path} for marker "
                         f"{key_sequence} has not been constructed yet."
@@ -272,7 +270,7 @@ class ULACConstructor:
         key_sequences = nested_dict_keys(self._path_config) if apply_to == "all" else apply_to
         for key_sequence in key_sequences:
             path_config = get_dict_entry(key_sequence, self._path_config)
-            if not isinstance(path_config, config.ConnectionPathConfig):
+            if not isinstance(path_config, configuration.ConnectionPathConfig):
                 continue
             print(f"Constructing Shortest Path: {key_sequence}")
             boundaries = []
@@ -323,7 +321,7 @@ class ULACConstructor:
                 inadmissible_sets.append(subset)
 
             # Compute shortest Path
-            shortest_path = base.construct_shortest_path_between_subsets(
+            shortest_path = internal.construct_shortest_path_between_subsets(
                 self._mesh,
                 *boundaries,
                 *inadmissible_sets,
@@ -357,7 +355,7 @@ class ULACConstructor:
                 marker_inds.append(marker)
 
             # Parameterize path
-            parameterized_path = base.parameterize_path(
+            parameterized_path = internal.parameterize_path(
                 self._mesh,
                 path,
                 marker_inds,
@@ -374,7 +372,7 @@ class ULACConstructor:
 
             # Get parameterized path
             parameterized_path = get_dict_entry(uac_config.path, self._parameterized_path_data)
-            if not isinstance(parameterized_path, base.ParameterizedPath):
+            if not isinstance(parameterized_path, internal.ParameterizedPath):
                 raise TypeError(
                     f"Parameterized path {key_sequence} for UAC construction has not been "
                     "constructed yet."
@@ -385,7 +383,7 @@ class ULACConstructor:
             uacs = uac_config.uacs
 
             # Compute UACs
-            uac_path = base.compute_uacs_polyline(parameterized_path, relative_positions, uacs)
+            uac_path = internal.compute_uacs_polyline(parameterized_path, relative_positions, uacs)
             set_dict_entry(key_sequence, self._uac_path_data, uac_path)
 
     # ----------------------------------------------------------------------------------------------
@@ -402,7 +400,7 @@ class ULACConstructor:
                 submesh_config.boundary_paths, submesh_config.portions, strict=True
             ):
                 uac_path = get_dict_entry(path, self._uac_path_data)
-                if not isinstance(uac_path, base.UACPath):
+                if not isinstance(uac_path, internal.UACPath):
                     raise TypeError(
                         f"UAC path {uac_path} for submesh {key_sequence} "
                         "has not been constructed yet."
@@ -418,7 +416,9 @@ class ULACConstructor:
             unique_inds, unique_alpha, unique_beta = self._concatenate_submesh_boundaries(
                 boundary_inds, boundary_alpha, boundary_beta
             )
-            submesh_boundary = base.UACPath(inds=unique_inds, alpha=unique_alpha, beta=unique_beta)
+            submesh_boundary = internal.UACPath(
+                inds=unique_inds, alpha=unique_alpha, beta=unique_beta
+            )
             set_dict_entry(key_sequence, self._submesh_boundary_data, submesh_boundary)
 
     # ----------------------------------------------------------------------------------------------
@@ -466,7 +466,7 @@ class ULACConstructor:
 
             # Get boundary path
             submesh_boundary = get_dict_entry(key_sequence, self._submesh_boundary_data)
-            if not isinstance(submesh_boundary, base.UACPath):
+            if not isinstance(submesh_boundary, internal.UACPath):
                 raise TypeError(f"Submesh boundary {key_sequence} has not been constructed yet.")
 
             # Get outside path
@@ -478,7 +478,7 @@ class ULACConstructor:
                 )
 
             # Extract submesh
-            submesh = base.extract_region_from_boundary(
+            submesh = internal.extract_region_from_boundary(
                 self._mesh, submesh_boundary.inds, outside_path
             )
             set_dict_entry(key_sequence, self._submesh_data, submesh)
@@ -491,12 +491,12 @@ class ULACConstructor:
 
             # Get boundary path
             submesh_boundary = get_dict_entry(key_sequence, self._submesh_boundary_data)
-            if not isinstance(submesh_boundary, base.UACPath):
+            if not isinstance(submesh_boundary, internal.UACPath):
                 raise TypeError(f"Submesh boundary {key_sequence} has not been constructed yet.")
 
             # Get submesh
             submesh = get_dict_entry(key_sequence, self._submesh_data)
-            if not isinstance(submesh, base.Submesh):
+            if not isinstance(submesh, internal.Submesh):
                 raise TypeError(f"Submesh {key_sequence} has not been extracted yet.")
 
             # Compute UACs
@@ -515,7 +515,7 @@ class ULACConstructor:
                 bc=uac_coordinates,
                 k=1,
             )
-            uac_submesh = base.UACSubmesh(
+            uac_submesh = internal.UACSubmesh(
                 inds=submesh.inds,
                 connectivity=simplices,
                 cell_inds=submesh.cell_inds,

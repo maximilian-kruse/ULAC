@@ -1,18 +1,6 @@
-from collections.abc import Iterable
-from dataclasses import dataclass
-
+from ulac.configuration import Step
 
 # ==================================================================================================
-@dataclass
-class Step:
-    id: str
-    type: str
-    description: str
-    apply_to: str | Iterable[str | Iterable[str]]
-
-
-# ==================================================================================================
-
 workflow = [
     # ----------------------------------------------------------------------------------------------
     # Initial step: extract boundaries from tags and mesh boundaries
