@@ -1,11 +1,10 @@
 import dataclasses
-from functools import lru_cache
 from typing import Any
 
 import msgspec.msgpack
 import numpy as np
 
-from .construction import internal
+from ulac.construction import internal
 
 
 def _np_array_enc_hook(obj: Any) -> Any:

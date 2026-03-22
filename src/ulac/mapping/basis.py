@@ -6,7 +6,7 @@ import meshlib.mrmeshpy as mrmeshpy
 import numpy as np
 import pyvista as pv
 
-from ulac.construction import internal
+from ulac.common import mvc
 
 
 def construct_smooth_parameterization(
@@ -22,7 +22,7 @@ def construct_smooth_parameterization(
         radius=exterior_boundary_radius, path=exterior_loop
     )
     exterior_boundary_coords = np.stack((boundary_x_coords, boundary_y_coords), axis=1)
-    mvc_coordinates = internal.compute_mean_value_coordinates(
+    mvc_coordinates = mvc.compute_mean_value_coordinates(
         extended_vertices, extended_simplices, exterior_loop, exterior_boundary_coords
     )
     mvc_coordinates = mvc_coordinates[: len(vertices)]
