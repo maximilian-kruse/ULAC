@@ -18,7 +18,7 @@ type SubmeshBoundaryDict = dict[
     str, "SubmeshBoundaryDict" | np.ndarray[tuple[int], np.dtype[np.int64]]
 ]
 type SubmeshDict = dict[str, "SubmeshDict" | pv.PolyData]
-type UACSubmeshDict = dict[str, "UACSubmeshDict" | pv.PolyData]
+type UACSubmeshDict = dict[str, "UACSubmeshDict" | internal.UACSubmesh]
 
 type PathConfigDict = dict[
     str, "PathConfigDict" | configuration.BoundaryPathConfig | configuration.ConnectionPathConfig
