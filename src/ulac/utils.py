@@ -1,7 +1,7 @@
 import numpy as np
 import pyvista as pv
 
-from . import construction
+from .construction import api as construction_api
 
 
 # ==================================================================================================
@@ -19,22 +19,24 @@ def convert_unstructured_to_polydata_mesh(mesh: pv.UnstructuredGrid) -> pv.PolyD
 
 # --------------------------------------------------------------------------------------------------
 def visualize_segmentation(
-    marker_data: construction.MarkerDict, uac_path_data: construction.UACPathDict, mesh: pv.PolyData
+    marker_data: construction_api.MarkerDict,
+    uac_path_data: construction_api.UACPathDict,
+    mesh: pv.PolyData,
 ) -> None:
-    marker_key_sequences = list(construction.nested_dict_keys(marker_data))
-    path_key_sequences = list(construction.nested_dict_keys(uac_path_data))
+    marker_key_sequences = list(construction_api.nested_dict_keys(marker_data))
+    path_key_sequences = list(construction_api.nested_dict_keys(uac_path_data))
 
     plotter = pv.Plotter(window_size=[700, 500])
     plotter.add_mesh(mesh, style="surface", show_edges=True, color="grey")
 
     for key_sequence in marker_key_sequences:
-        marker = construction.get_dict_entry(key_sequence, marker_data)
+        marker = construction_api.get_dict_entry(key_sequence, marker_data)
         if marker is None:
             continue
         marker_mesh = pv.PolyData(mesh.points[marker])
         plotter.add_mesh(marker_mesh, color="red", point_size=15, render_points_as_spheres=True)
     for key_sequence in path_key_sequences:
-        path = construction.get_dict_entry(key_sequence, uac_path_data)
+        path = construction_api.get_dict_entry(key_sequence, uac_path_data)
         if path is None:
             continue
         path_mesh = pv.PolyData(mesh.points[path.inds])
@@ -47,12 +49,12 @@ def visualize_segmentation(
 
 
 # --------------------------------------------------------------------------------------------------
-def visualize_uac_mesh(uac_submesh_data: construction.UACSubmeshDict) -> None:
-    uac_submesh_key_sequences = list(construction.nested_dict_keys(uac_submesh_data))
+def visualize_uac_mesh(uac_submesh_data: construction_api.UACSubmeshDict) -> None:
+    uac_submesh_key_sequences = list(construction_api.nested_dict_keys(uac_submesh_data))
 
     plotter = pv.Plotter()
     for key_sequence in uac_submesh_key_sequences:
-        uac_submesh = construction.get_dict_entry(key_sequence, uac_submesh_data)
+        uac_submesh = construction_api.get_dict_entry(key_sequence, uac_submesh_data)
         if uac_submesh is None:
             continue
         coordinates = np.hstack(
