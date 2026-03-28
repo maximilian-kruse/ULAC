@@ -1,5 +1,7 @@
+from typing import Self
+
 import numpy as np
-import scipy.spatial as sps
+import pyvista as pv
 
 from ulac.common import dict_utils
 from ulac.construction import constructor
@@ -20,10 +22,8 @@ class UACMapper:
         original_mesh_vertices: np.ndarray,
         uac_submesh_data: constructor.UACSubmeshDict,
     ):
+        self.uac_pv_submeshes = self._create_pv_submeshes(original_mesh_vertices, uac_submesh_data)
         self._uac_submesh_data = uac_submesh_data
-        self._uac_submesh_scalar_interpolators, self._uac_submesh_vector_interpolators = (
-            self._create_interpolators(uac_submesh_data)
-        )
         self._uac_submesh_jacobians, self._uac_submesh_pinv_jacobians = (
             self._assemble_cellwise_jacobians(original_mesh_vertices, uac_submesh_data)
         )
@@ -40,6 +40,17 @@ class UACMapper:
         return uac_scalar_data
 
     # ----------------------------------------------------------------------------------------------
+    def map_scalar_from_uac_to_original_mesh(self, uac_scalar_data: UACScalarDict) -> np.ndarray:
+        original_mesh_data = np.zeros(self._orig_mesh_simplices.shape[0])
+        key_sequence = dict_utils.nested_dict_keys(self._uac_submesh_data)
+        for key in key_sequence:
+            submesh_data = dict_utils.get_dict_entry(key, self._uac_submesh_data)
+            cell_index_mask = submesh_data.cell_inds
+            uac_scalar_field_on_submesh = dict_utils.get_dict_entry(key, uac_scalar_data)
+            original_mesh_data[cell_index_mask] = uac_scalar_field_on_submesh
+        return original_mesh_data
+
+    # ----------------------------------------------------------------------------------------------
     def map_vector_from_original_to_uac_mesh(self, vector_field: np.ndarray) -> UACVectorDict:
         uac_vector_data = dict_utils.create_empty_dict_from_keys(self._uac_submesh_data)
         key_sequence = dict_utils.nested_dict_keys(self._uac_submesh_data)
@@ -51,17 +62,6 @@ class UACMapper:
             uac_vector_field = pinv_jacobian @ vector_field_on_submesh
             dict_utils.set_dict_entry(key, uac_vector_data, uac_vector_field)
         return uac_vector_data
-
-    # ----------------------------------------------------------------------------------------------
-    def map_scalar_from_uac_to_original_mesh(self, uac_scalar_data: UACScalarDict) -> np.ndarray:
-        original_mesh_data = np.zeros(self._orig_mesh_simplices.shape[0])
-        key_sequence = dict_utils.nested_dict_keys(self._uac_submesh_data)
-        for key in key_sequence:
-            submesh_data = dict_utils.get_dict_entry(key, self._uac_submesh_data)
-            cell_index_mask = submesh_data.cell_inds
-            uac_scalar_field_on_submesh = dict_utils.get_dict_entry(key, uac_scalar_data)
-            original_mesh_data[cell_index_mask] = uac_scalar_field_on_submesh
-        return original_mesh_data
 
     # ----------------------------------------------------------------------------------------------
     def map_vector_from_uac_to_original_mesh(self, uac_vector_data: UACVectorDict) -> np.ndarray:
@@ -76,61 +76,38 @@ class UACMapper:
         return original_mesh_data
 
     # ----------------------------------------------------------------------------------------------
-    def interpolate_scalar_to_other_uac_mesh(
+    def interpolate_to_other_uac_mesh(
         self,
-        uac_scalar_data: UACScalarDict,
-        other_uac_mesh_data: constructor.UACSubmeshDict,
-    ) -> UACScalarDict:
-        other_uac_scalar_data = dict_utils.create_empty_dict_from_keys(self._uac_submesh_data)
+        uac_data: UACScalarDict | UACVectorDict,
+        other_uac_mapper: Self,
+    ) -> UACScalarDict | UACVectorDict:
+        other_uac_data = dict_utils.create_empty_dict_from_keys(self._uac_submesh_data)
         key_sequence = dict_utils.nested_dict_keys(self._uac_submesh_data)
         for key in key_sequence:
-            scalar_submesh_data = dict_utils.get_dict_entry(key, uac_scalar_data)
-            other_uac_submesh = dict_utils.get_dict_entry(key, other_uac_mesh_data)
-            other_uac_coords = np.hstack(
-                [other_uac_submesh.alpha[:, None], other_uac_submesh.beta[:, None]]
+            submesh_data = dict_utils.get_dict_entry(key, uac_data)
+            pv_submesh = dict_utils.get_dict_entry(key, self._uac_pv_submeshes)
+            other_pv_submesh = dict_utils.get_dict_entry(key, other_uac_mapper.uac_pv_submeshes)
+            transferred_submesh_data = self._interpolate_to_other_pv_submesh(
+                submesh_data, pv_submesh, other_pv_submesh
             )
-            interpolator = dict_utils.get_dict_entry(key, self._uac_submesh_scalar_interpolators)
-            interpolator.values = scalar_submesh_data
-            dict_utils.set_dict_entry(key, other_uac_scalar_data, interpolator(other_uac_coords))
-        return other_uac_scalar_data
+            pv_submesh.clear_data()
+            other_pv_submesh.clear_data()
+            dict_utils.set_dict_entry(key, other_uac_data, transferred_submesh_data)
+        return other_uac_data
 
     # ----------------------------------------------------------------------------------------------
-    def interpolate_vector_to_other_uac_mesh(
-        self,
-        uac_vector_data: UACVectorDict,
-        other_uac_mesh_data: constructor.UACSubmeshDict,
-    ) -> UACVectorDict:
-        other_uac_vector_data = dict_utils.create_empty_dict_from_keys(self._uac_submesh_data)
+    def _create_pv_submeshes(self, uac_submesh_data: constructor.UACSubmeshDict):
+        pv_submeshes = dict_utils.create_empty_dict_from_keys(self._uac_submesh_data)
         key_sequence = dict_utils.nested_dict_keys(self._uac_submesh_data)
         for key in key_sequence:
-            vector_submesh_data = dict_utils.get_dict_entry(key, uac_vector_data)
-            other_uac_submesh = dict_utils.get_dict_entry(key, other_uac_mesh_data)
-            other_uac_coords = np.hstack(
-                [other_uac_submesh.alpha[:, None], other_uac_submesh.beta[:, None]]
-            )
-            interpolator = dict_utils.get_dict_entry(key, self._uac_submesh_vector_interpolators)
-            interpolator.values = vector_submesh_data
-            dict_utils.set_dict_entry(key, other_uac_vector_data, interpolator(other_uac_coords))
-        return other_uac_vector_data
-
-    # ----------------------------------------------------------------------------------------------
-    def _create_interpolators(self, uac_submesh_data: constructor.UACSubmeshDict) -> None:
-        scalar_interpolators = dict_utils.create_empty_dict_from_keys(uac_submesh_data)
-        vector_interpolators = dict_utils.create_empty_dict_from_keys(uac_submesh_data)
-        key_sequence = dict_utils.nested_dict_keys(uac_submesh_data)
-        for key in key_sequence:
-            num_vertices = dict_utils.get_dict_entry(key, uac_submesh_data).vertex_inds.shape[0]
-            dummy_scalar_values = np.zeros(num_vertices)
-            dummy_vector_values = np.zeros((num_vertices, 2))
             submesh_data = dict_utils.get_dict_entry(key, uac_submesh_data)
-            coords = np.hstack([submesh_data.alpha[:, None], submesh_data.beta[:, None]])
-            dict_utils.set_dict_entry(
-                key, scalar_interpolators, sps.NearestNDInterpolator(coords, dummy_scalar_values)
+            vertex_coordinates = np.hstack(
+                [submesh_data.alpha[:, None], submesh_data.beta[:, None]]
             )
-            dict_utils.set_dict_entry(
-                key, vector_interpolators, sps.NearestNDInterpolator(coords, dummy_vector_values)
-            )
-        return scalar_interpolators, vector_interpolators
+            simplicies = submesh_data.connectivity
+            pv_submesh = pv.PolyData.from_regular_faces(vertex_coordinates, simplicies)
+            dict_utils.set_dict_entry(key, pv_submeshes, pv_submesh)
+        return pv_submeshes
 
     # ----------------------------------------------------------------------------------------------
     def _assemble_cellwise_jacobians(
@@ -152,3 +129,14 @@ class UACMapper:
             dict_utils.set_dict_entry(key, cellwise_jacobians, jacobians)
             dict_utils.set_dict_entry(key, pinv_cellwise_jacobians, pinv_jacobians)
         return cellwise_jacobians, pinv_cellwise_jacobians
+
+    # ----------------------------------------------------------------------------------------------
+    def _interpolate_to_other_pv_submesh(
+        self, scalar_submesh_data: np.ndarray, pv_submesh: pv.PolyData, other_pv_submesh: pv.PolyData
+    ) -> np.ndarray:
+        pv_submesh.cell_data["scalar_to_transfer"] = scalar_submesh_data
+        pv_submesh = pv_submesh.cell_data_to_point_data()
+        other_pv_submesh = other_pv_submesh.sample(pv_submesh)
+        other_pv_submesh = other_pv_submesh.point_data_to_cell_data()
+        other_scalar_submesh_data = other_pv_submesh.cell_data["scalar_to_transfer"]
+        return other_scalar_submesh_data
