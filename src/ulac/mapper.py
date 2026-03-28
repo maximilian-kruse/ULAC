@@ -6,7 +6,7 @@ import pyvista as pv
 from ulac.common import dict_utils
 from ulac.construction import constructor
 
-from . import jacobian
+from .common import jacobian
 
 # ==================================================================================================
 type UACScalarDict = dict[str, "UACScalarDict" | np.ndarray]

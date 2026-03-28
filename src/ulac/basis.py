@@ -6,10 +6,24 @@ import meshlib.mrmeshpy as mrmeshpy
 import numpy as np
 import pyvista as pv
 
-from ulac.common import mvc
+from .common import jacobian, mvc
 
 
-def construct_smooth_parameterization(
+def construct_cellwise_basis(
+    mesh: pv.PolyData, exterior_boundary_tag: int, exterior_boundary_radius: float
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    simplices = np.array(mesh.faces.reshape(-1, 4)[:, 1:4])
+    mvc_coordinates = _construct_smooth_parameterization(
+        mesh, exterior_boundary_tag, exterior_boundary_radius
+    )
+    cellwise_jacobians = jacobian.compute_cellwise_jacobians(
+        vertices_3d=mesh.points, vertices_2d=mvc_coordinates, simplices=simplices
+    )
+    basis_vectors = _orthonormalize_jacobian_columns(cellwise_jacobians)
+    return basis_vectors, mvc_coordinates, cellwise_jacobians
+
+
+def _construct_smooth_parameterization(
     mesh: pv.PolyData, exterior_boundary_tag: int, exterior_boundary_radius: float
 ) -> np.ndarray:
     vertices = np.array(mesh.points)
@@ -53,7 +67,7 @@ def _find_exterior_boundary(mesh: pv.PolyData, exterior_boundary_tag: int) -> np
 
 def _create_mesh_with_holes_filled(
     simplices: np.ndarray, vertices: np.ndarray, exterior_boundary_inds: np.ndarray
-):
+) -> tuple[np.ndarray, np.ndarray]:
     meshlib_mesh = mrmeshnumpy.meshFromFacesVerts(simplices, vertices)
     hole_edges = meshlib_mesh.topology.findHoleRepresentiveEdges()
     exterior_boundary_ind = _find_exterior_edge_id(meshlib_mesh, hole_edges, exterior_boundary_inds)
@@ -77,7 +91,7 @@ def _find_exterior_edge_id(
     raise ValueError("No edge found with origin in the exterior boundary.")
 
 
-def _map_path_to_circle(radius: float, path: Path):
+def _map_path_to_circle(radius: float, path: Path) -> tuple[np.ndarray, np.ndarray]:
     x_coordinates = np.zeros(len(path))
     y_coordinates = np.zeros(len(path))
 
@@ -87,3 +101,22 @@ def _map_path_to_circle(radius: float, path: Path):
         y_coordinates[i] = radius * np.sin(angle)
 
     return x_coordinates, y_coordinates
+
+
+def _orthonormalize_jacobian_columns(cellwise_jacobians: np.ndarray) -> np.ndarray:
+    first_basis_vector = cellwise_jacobians[..., 0]
+    second_basis_vector = cellwise_jacobians[..., 1]
+
+    first_basis_vector = first_basis_vector / np.linalg.norm(
+        first_basis_vector, axis=1, keepdims=True
+    )
+    second_basis_vector = (
+        second_basis_vector
+        - np.einsum("ni,ni->n", first_basis_vector, second_basis_vector)[:, None]
+        * first_basis_vector
+    )
+    second_basis_vector = second_basis_vector / np.linalg.norm(
+        second_basis_vector, axis=1, keepdims=True
+    )
+    return np.stack([first_basis_vector, second_basis_vector], axis=-1)
+
