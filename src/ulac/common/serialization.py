@@ -23,7 +23,7 @@ def _decode_recursively(data: dict, uac_submesh_attrs: frozenset[str]) -> dict |
     if data.keys() == uac_submesh_attrs:
         return msgspec.convert(data, type=internal.UACSubmesh, dec_hook=_np_array_dec_hook)
     else:
-            return {k: _decode_recursively(v, uac_submesh_attrs) for k, v in data.items()}
+        return {k: _decode_recursively(v, uac_submesh_attrs) for k, v in data.items()}
 
 
 def encode_uac_submeshdata(data_dict: dict) -> bytes:

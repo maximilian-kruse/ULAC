@@ -14,9 +14,12 @@ def compute_cellwise_jacobians(vertices_3d, vertices_2d, simplices):
         )
     return jacobians
 
+
 def _compute_jacobian_rows(edge_3d_one, edge_3d_two, edge_2d_one, edge_2d_two, row_ind):
     j_col_one = (
+        edge_3d_one[:, row_ind] * edge_2d_two[:, 1] - edge_3d_two[:, row_ind] * edge_2d_one[:, 1]
+    ) / (edge_2d_one[:, 0] * edge_2d_two[:, 1] - edge_2d_one[:, 1] * edge_2d_two[:, 0])
+    j_col_two = (
         edge_3d_one[:, row_ind] * edge_2d_two[:, 0] - edge_3d_two[:, row_ind] * edge_2d_one[:, 0]
     ) / (edge_2d_two[:, 0] * edge_2d_one[:, 1] - edge_2d_two[:, 1] * edge_2d_one[:, 0])
-    j_col_two = (edge_3d_one[:, row_ind] - j_col_one * edge_2d_one[:, 1]) / edge_2d_one[:, 0]
     return j_col_one, j_col_two
