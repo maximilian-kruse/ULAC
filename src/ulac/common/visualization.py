@@ -17,6 +17,7 @@ def plot_2d_mesh(coordinates_2d: np.ndarray, simplices: np.ndarray) -> None:
     plotter.show()
 
 
+# --------------------------------------------------------------------------------------------------
 def plot_uac_mesh(uac_submesh_data: constructor.UACSubmeshDict) -> None:
     uac_submesh_key_sequences = list(dict_utils.nested_dict_keys(uac_submesh_data))
 
@@ -38,6 +39,7 @@ def plot_uac_mesh(uac_submesh_data: constructor.UACSubmeshDict) -> None:
     plotter.show()
 
 
+# --------------------------------------------------------------------------------------------------
 def plot_mesh_with_vector_field(
     mesh: pv.PolyData,
     vector_field: np.ndarray,
