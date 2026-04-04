@@ -7,7 +7,7 @@ requires-python = ">=3.13"
 dynamic = ["version"]
 readme = "README.md"
 license = { text = "MIT" }
-keywords = ["eikonal equation", "automatic differentiation", "GPU acceleration"]
+keywords = [""]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "Operating System :: POSIX :: Linux",
@@ -98,7 +98,7 @@ testpaths = ["test"]
 addopts = [
   "-v",
   "--import-mode=importlib",
-  "--cov=eikonax",
+  "--cov=ulac",
   "--cov-config=.coveragerc",
 ]
 markers = [

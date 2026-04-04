@@ -4,6 +4,7 @@ import pyvista as pv
 from ulac.construction import constructor
 
 from . import dict_utils
+from ulac import mapper
 
 
 # ==================================================================================================
@@ -35,6 +36,46 @@ def plot_uac_mesh(uac_submesh_data: constructor.UACSubmeshDict) -> None:
         )
         submesh = pv.PolyData.from_regular_faces(coordinates, uac_submesh.connectivity)
         plotter.add_mesh(submesh, style="wireframe", color="grey")
+    plotter.view_xy()
+    plotter.show()
+
+
+# --------------------------------------------------------------------------------------------------
+def plot_uac_mesh_with_vector_field(
+    uac_submesh_data: constructor.UACSubmeshDict,
+    vector_field_data: mapper.UACVectorDict,
+    scaling_factor: float,
+    vector_color: str = "blue",
+    mesh_color: str = "lightgray",
+) -> None:
+    uac_submesh_key_sequences = list(dict_utils.nested_dict_keys(uac_submesh_data))
+
+    plotter = pv.Plotter()
+    for key_sequence in uac_submesh_key_sequences:
+        uac_submesh = dict_utils.get_dict_entry(key_sequence, uac_submesh_data)
+        vector_field = dict_utils.get_dict_entry(key_sequence, vector_field_data)
+        if uac_submesh is None or vector_field is None:
+            continue
+        coordinates = np.hstack(
+            (
+                uac_submesh.alpha[:, None],
+                uac_submesh.beta[:, None],
+                np.zeros((uac_submesh.alpha.shape[0], 1)),
+            )
+        )
+        submesh = pv.PolyData.from_regular_faces(coordinates, uac_submesh.connectivity)
+        cell_centers = submesh.cell_centers()
+        cell_centers.point_data["vector_field_to_plot"] = np.hstack(
+           (vector_field, np.zeros((vector_field.shape[0], 1)))
+        )
+        glyphs = cell_centers.glyph(
+            orient="vector_field_to_plot",
+            scale=False,
+            factor=scaling_factor,
+            geom=pv.Arrow(),
+        )
+        plotter.add_mesh(glyphs, color=vector_color)
+        plotter.add_mesh(submesh, style="wireframe", color=mesh_color)
     plotter.view_xy()
     plotter.show()
 
